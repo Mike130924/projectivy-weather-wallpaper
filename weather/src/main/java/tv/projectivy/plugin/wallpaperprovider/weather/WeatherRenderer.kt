@@ -476,17 +476,16 @@ object WeatherRenderer {
 
         var y = MARGIN + dy(60f) + (if (alert != null) 74f else 0f)
 
-        // Seasonal accent applies to the location label only. Everything below
-        // it stays white: tinting the temperature would hurt legibility for
-        // decoration, which is the wrong trade on a screen people glance at.
-        val seasonal = HolidayThemes.current()
+        // Neon Galaxy V2 accent: keep the location label distinct from readings.
         val labelPaint = paint(sz(38f), medium, 205)
-        seasonal?.let { labelPaint.color = it.accent }
+        labelPaint.color = Color.parseColor("#FFFF4FD8")
         canvas.drawText(placeLabel.uppercase(), MARGIN, y, labelPaint)
         y += dy(190f)
 
         val temp = "${c.temperature.roundToInt()}${c.unitSuffix}"
-        val tempPaint = paint(sz(220f), light)
+        val tempPaint = paint(sz(220f), light).apply {
+            color = Color.parseColor("#FF00D9FF")
+        }
         canvas.drawText(temp, MARGIN, y, tempPaint)
 
         WeatherIcons.draw(
@@ -498,7 +497,8 @@ object WeatherRenderer {
 
         y += dy(90f)
         canvas.drawText(
-            OpenMeteoClient.describe(context, c.weatherCode), MARGIN, y, paint(sz(64f), light, 238)
+            OpenMeteoClient.describe(context, c.weatherCode), MARGIN, y,
+            paint(sz(64f), light, 238).apply { color = Color.parseColor("#FFF3F8FF") }
         )
 
         // Whether it is about to rain matters more than anything else here, so
@@ -509,7 +509,7 @@ object WeatherRenderer {
                 OpenMeteoClient.nowcastLabel(n, c.weatherCode)?.let { text ->
                     y += dy(52f)
                     canvas.drawText(text, MARGIN, y, paint(sz(40f), medium).apply {
-                        color = Color.parseColor("#8FD3F4")
+                        color = Color.parseColor("#FF00D9FF")
                     })
                 }
             }
@@ -556,7 +556,8 @@ object WeatherRenderer {
             // panel has limited vertical room.
             yesterday?.let { append("   \u00B7   $it") }
         }
-        canvas.drawText(detail, MARGIN, y, paint(sz(40f), light, 195))
+        canvas.drawText(detail, MARGIN, y,
+            paint(sz(40f), light, 215).apply { color = Color.parseColor("#FF8FAEFF") })
         y += dy(52f)
 
         // Aurora, when the K-index makes it plausible here. Conditional, so it
@@ -964,17 +965,17 @@ object WeatherRenderer {
 
         entries.forEachIndexed { i, hour ->
             val cx = startX + colWidth * i + colWidth / 2f - dy(12f)
-            canvas.drawText(hour.label, cx - labelHalf(hour.label, sz(28f)), top + dy(22f), paint(sz(28f), light, 175))
+            canvas.drawText(hour.label, cx - labelHalf(hour.label, sz(28f)), top + dy(22f), paint(sz(28f), light, 190).apply { color = Color.parseColor("#FF8FAEFF") })
             WeatherIcons.draw(canvas, hour.weatherCode, hour.isDay, cx, top + dy(60f), sz(46f))
             val t = "${hour.temperature.roundToInt()}\u00B0"
-            canvas.drawText(t, cx - labelHalf(t, sz(36f)), top + dy(108f), paint(sz(36f), light, 235))
+            canvas.drawText(t, cx - labelHalf(t, sz(36f)), top + dy(108f), paint(sz(36f), light, 240).apply { color = Color.parseColor("#FF00D9FF") })
 
             // Only show precipitation chance when it's worth knowing.
             if (hour.precipChance >= 20) {
                 val p = "${hour.precipChance}%"
                 canvas.drawText(
                     p, cx - labelHalf(p, sz(24f)), top + dy(128f),
-                    paint(sz(24f), light, 190).apply { color = Color.parseColor("#8FD3F4") }
+                    paint(sz(24f), light, 190).apply { color = Color.parseColor("#FF00D9FF") }
                 )
             }
         }
@@ -999,12 +1000,12 @@ object WeatherRenderer {
 
         entries.forEachIndexed { i, day ->
             val cx = startX + colWidth * i + colWidth / 2f - dy(12f)
-            canvas.drawText(day.label, cx - labelHalf(day.label, sz(28f)), top + dy(22f), paint(sz(28f), light, 175))
+            canvas.drawText(day.label, cx - labelHalf(day.label, sz(28f)), top + dy(22f), paint(sz(28f), light, 190).apply { color = Color.parseColor("#FF8FAEFF") })
             WeatherIcons.draw(canvas, day.weatherCode, true, cx, top + dy(60f), sz(46f))
             val hi = "${day.high.roundToInt()}\u00B0"
             val lo = "${day.low.roundToInt()}\u00B0"
-            canvas.drawText(hi, cx - labelHalf(hi, sz(34f)) - dy(22f), top + dy(108f), paint(sz(34f), light, 235))
-            canvas.drawText(lo, cx - labelHalf(lo, sz(30f)) + dy(24f), top + dy(108f), paint(sz(30f), light, 150))
+            canvas.drawText(hi, cx - labelHalf(hi, sz(34f)) - dy(22f), top + dy(108f), paint(sz(34f), light, 240).apply { color = Color.parseColor("#FF00D9FF") })
+            canvas.drawText(lo, cx - labelHalf(lo, sz(30f)) + dy(24f), top + dy(108f), paint(sz(30f), light, 180).apply { color = Color.parseColor("#FF8FAEFF") })
         }
     }
 
