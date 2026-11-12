@@ -447,6 +447,14 @@ object WeatherRenderer {
         phaseIsDay: Boolean = false,
         context: Context? = null
     ) {
+        // Approved compact Christmas GSD card, fitted inside the central window.
+        // Transform the entire composition so the glass surface, border, typography,
+        // icons, forecast and spacing all share the same compact layout bounds.
+        canvas.save()
+        canvas.translate(875f, 12.5f)
+        canvas.scale(0.5506f, 0.4402f)
+        canvas.translate(-540f, -80f)
+
         val left = 540f
         val top = 80f
         val width = 840f
@@ -570,6 +578,7 @@ object WeatherRenderer {
             }
             canvas.drawText(warning, left + 42f, bottom - 18f, warningPaint)
         }
+        canvas.restore()
     }
 
     private fun drawClock(canvas: Canvas, context: Context, alert: Boolean) {
