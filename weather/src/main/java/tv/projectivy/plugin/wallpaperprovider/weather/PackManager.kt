@@ -59,12 +59,25 @@ object PackManager {
      */
     fun cachedPacks(context: Context): List<Pack> {
         val cache = File(context.filesDir, INDEX_CACHE)
-        if (!cache.exists()) return emptyList()
-        return runCatching { parseIndex(cache.readText()) }.getOrElse {
+        val remote = if (!cache.exists()) emptyList() else runCatching {
+            parseIndex(cache.readText())
+        }.getOrElse {
             Log.w(TAG, "Index parse failed: ${it.message}")
             emptyList()
         }
+        // The Christmas GSD pack ships inside the APK, so it is available
+        // immediately and never depends on a CDN, account, or first-run fetch.
+        return listOf(christmasGsdPack) + remote.filterNot { it.id == christmasGsdPack.id }
     }
+
+    private val christmasGsdPack = Pack(
+        id = "christmas-gsd",
+        name = "Christmas GSD",
+        author = "Custom artwork",
+        license = "User supplied artwork",
+        kind = KIND_STATIC,
+        assets = mapOf("default" to "asset://packs/christmas-gsd/default.jpg")
+    )
 
     fun indexIsStale(context: Context): Boolean {
         val cache = File(context.filesDir, INDEX_CACHE)
@@ -117,7 +130,9 @@ object PackManager {
         return out
     }
 
-    fun findPack(context: Context, id: String): Pack? = packs(context).firstOrNull { it.id == id }
+    fun findPack(context: Context, id: String): Pack? =
+        if (id == christmasGsdPack.id) christmasGsdPack
+        else packs(context).firstOrNull { it.id == id }
 
     // ------------------------------------------------------------------ assets
 
@@ -165,7 +180,18 @@ object PackManager {
 
         if (cached.exists() && cached.length() > 0) return cached
 
-        val bytes = fetchBytes(url) ?: return null
+        // Bundled assets use the same cache path as downloaded community packs,
+        // keeping the renderer unchanged while making this pack fully offline.
+        val bytes = if (url.startsWith("asset://")) {
+            runCatching {
+                context.assets.open(url.removePrefix("asset://")).use { it.readBytes() }
+            }.getOrElse {
+                Log.w(TAG, "Bundled pack asset unavailable: ${it.message}")
+                return null
+            }
+        } else {
+            fetchBytes(url) ?: return null
+        }
         return runCatching {
             cached.writeBytes(bytes)
             cached

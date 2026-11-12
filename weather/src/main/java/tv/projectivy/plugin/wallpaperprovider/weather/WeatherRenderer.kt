@@ -988,24 +988,33 @@ object WeatherRenderer {
         startX: Float,
         top: Float
     ) {
-        val colWidth = 124f * scale
-        val entries = c.daily.take(5)
+        val entries = c.daily.take(7)
+        if (entries.isEmpty()) return
 
+        // Seven days must fit even when the hourly strip is enabled to the left.
+        // Use the available width instead of silently dropping the whole forecast.
+        val available = W - startX - dy(70f)
+        val colWidth = minOf(124f * scale, available / entries.size)
+        if (colWidth < 66f * scale) return
+        val compact = (colWidth / (124f * scale)).coerceIn(0.58f, 1f)
         val panel = RectF(
             startX - dy(26f), top - dy(14f),
-            startX + colWidth * entries.size + dy(10f), top + dy(128f)
+            startX + colWidth * entries.size + dy(10f), top + dy(128f * compact)
         )
-        if (panel.right > W - 60f) return   // no room; skip rather than overflow
         canvas.drawRoundRect(panel, dy(18f), dy(18f), panelPaint())
 
         entries.forEachIndexed { i, day ->
-            val cx = startX + colWidth * i + colWidth / 2f - dy(12f)
-            canvas.drawText(day.label, cx - labelHalf(day.label, sz(28f)), top + dy(22f), paint(sz(28f), light, 190).apply { color = Color.parseColor("#FF8FAEFF") })
-            WeatherIcons.draw(canvas, day.weatherCode, true, cx, top + dy(60f), sz(46f))
-            val hi = "${day.high.roundToInt()}\u00B0"
-            val lo = "${day.low.roundToInt()}\u00B0"
-            canvas.drawText(hi, cx - labelHalf(hi, sz(34f)) - dy(22f), top + dy(108f), paint(sz(34f), light, 240).apply { color = Color.parseColor("#FF00D9FF") })
-            canvas.drawText(lo, cx - labelHalf(lo, sz(30f)) + dy(24f), top + dy(108f), paint(sz(30f), light, 180).apply { color = Color.parseColor("#FF8FAEFF") })
+            val cx = startX + colWidth * i + colWidth / 2f - dy(12f * compact)
+            val labelSize = sz(28f * compact)
+            val iconSize = sz(46f * compact)
+            val highSize = sz(34f * compact)
+            val lowSize = sz(30f * compact)
+            canvas.drawText(day.label, cx - labelHalf(day.label, labelSize), top + dy(22f * compact), paint(labelSize, light, 190).apply { color = Color.parseColor("#FF8FAEFF") })
+            WeatherIcons.draw(canvas, day.weatherCode, true, cx, top + dy(60f * compact), iconSize)
+            val hi = "${day.high.roundToInt()}\\u00B0"
+            val lo = "${day.low.roundToInt()}\\u00B0"
+            canvas.drawText(hi, cx - labelHalf(hi, highSize) - dy(22f * compact), top + dy(108f * compact), paint(highSize, light, 240).apply { color = Color.parseColor("#FF00D9FF") })
+            canvas.drawText(lo, cx - labelHalf(lo, lowSize) + dy(24f * compact), top + dy(108f * compact), paint(lowSize, light, 180).apply { color = Color.parseColor("#FF8FAEFF") })
         }
     }
 

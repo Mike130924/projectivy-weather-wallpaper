@@ -1,4 +1,15 @@
-# Weather Wallpaper for Projectivy
+# Christmas GSD Weather Wallpaper for Projectivy
+
+This fork packages the user-supplied Christmas German Shepherd family artwork as
+an offline, built-in static wallpaper pack. The existing Open-Meteo weather
+engine and Projectivy wallpaper-provider integration are retained; the live
+weather panel is composited over the static artwork by the existing renderer.
+
+The Christmas GSD pack is selected by default on fresh installs. The default
+configuration also enables the seven-day forecast and a 24-hour digital clock.
+The daily forecast requests seven days from Open-Meteo and lays out all seven
+columns alongside the optional hourly strip.
+
 
 A wallpaper provider plugin that turns your Projectivy Launcher home screen into
 a weather display. Current conditions, optional forecast panels, and backgrounds

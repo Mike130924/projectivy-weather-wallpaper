@@ -105,7 +105,7 @@ object PreferencesManager {
      */
     /** One of Backgrounds.SOURCE_* — gradient, local, stock or radar. */
     var backgroundSource: String
-        get() = prefs.getString(KEY_BACKGROUND, null) ?: Backgrounds.SOURCE_SCENE
+        get() = prefs.getString(KEY_BACKGROUND, null) ?: Backgrounds.SOURCE_PACK
         set(v) = prefs.edit().putString(KEY_BACKGROUND, v).apply()
 
     /** Unsplash Access Key. Empty means the stock source is unavailable. */
@@ -128,7 +128,7 @@ object PreferencesManager {
         set(v) = prefs.edit().putBoolean(KEY_SHOW_HOURLY, v).apply()
 
     var showDaily: Boolean
-        get() = prefs.getBoolean(KEY_SHOW_DAILY, false)
+        get() = prefs.getBoolean(KEY_SHOW_DAILY, true)
         set(v) = prefs.edit().putBoolean(KEY_SHOW_DAILY, v).apply()
 
     var showStats: Boolean
@@ -141,7 +141,7 @@ object PreferencesManager {
 
     /** Pack id from packs/index.json. Empty means none selected. */
     var selectedPack: String
-        get() = prefs.getString(KEY_SELECTED_PACK, null) ?: ""
+        get() = prefs.getString(KEY_SELECTED_PACK, null) ?: "christmas-gsd"
         set(v) = prefs.edit().putString(KEY_SELECTED_PACK, v).apply()
 
     /**
@@ -299,7 +299,7 @@ object PreferencesManager {
      * than one.
      */
     var showClock: Boolean
-        get() = prefs.getBoolean(KEY_CLOCK, false)
+        get() = prefs.getBoolean(KEY_CLOCK, true)
         set(v) = prefs.edit().putBoolean(KEY_CLOCK, v).apply()
 
     /**
@@ -429,7 +429,7 @@ object PreferencesManager {
      * using it, and it isn't always easy to change.
      */
     var clockHours: String
-        get() = prefs.getString(KEY_CLOCK_HOURS, null) ?: CLOCK_HOURS_SYSTEM
+        get() = prefs.getString(KEY_CLOCK_HOURS, null) ?: CLOCK_HOURS_24
         set(v) = prefs.edit().putString(KEY_CLOCK_HOURS, v).apply()
 
     /** Base type size in pixels for the chosen clock size. */

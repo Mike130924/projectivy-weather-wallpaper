@@ -1,5 +1,5 @@
 <resources>
-    <string name="plugin_name">Weather Wallpaper</string>
+    <string name="plugin_name">Christmas GSD Weather</string>
     <string name="plugin_description">Shows current conditions and today\'s high/low as your launcher wallpaper. Data by Open-Meteo.</string>
 
     <!-- *** GENERATE YOUR OWN UUID V4: https://www.uuidgenerator.net/version4 *** -->

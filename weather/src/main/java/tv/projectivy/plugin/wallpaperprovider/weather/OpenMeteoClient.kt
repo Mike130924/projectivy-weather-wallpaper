@@ -96,7 +96,7 @@ object OpenMeteoClient {
                 "&daily=temperature_2m_max,temperature_2m_min,weather_code," +
                 "sunrise,sunset,uv_index_max" +
                 "&temperature_unit=$tempUnit&wind_speed_unit=$windUnit" +
-                "&forecast_days=6&timezone=auto"
+                "&forecast_days=7&timezone=auto"
 
         var conn: HttpURLConnection? = null
         return try {
