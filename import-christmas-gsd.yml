@@ -1,0 +1,63 @@
+name: Import Christmas GSD Weather Plugin
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Find and extract uploaded project ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP_FILE="Christmas GSD Weather Plugin.zip"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "::error::Upload '$ZIP_FILE' to the repository root first."
+            exit 1
+          fi
+
+          mkdir -p "$RUNNER_TEMP/christmas-gsd-import"
+          unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/christmas-gsd-import"
+
+          PROJECT_ROOT="$(find "$RUNNER_TEMP/christmas-gsd-import" -type f -name gradlew -print -quit | xargs -r dirname)"
+          if [ -z "$PROJECT_ROOT" ] || [ ! -f "$PROJECT_ROOT/settings.gradle" -a ! -f "$PROJECT_ROOT/settings.gradle.kts" ]; then
+            echo "::error::Could not locate the Android/Gradle project inside the ZIP."
+            exit 1
+          fi
+
+          echo "Importing project from: $PROJECT_ROOT"
+          cp -a "$PROJECT_ROOT"/. .
+
+          # Keep the original uploaded artwork source alongside the project, if present.
+          ARTWORK_ROOT="$(find "$RUNNER_TEMP/christmas-gsd-import" -type d -name artwork-source -print -quit)"
+          if [ -n "$ARTWORK_ROOT" ]; then
+            mkdir -p artwork-source
+            cp -a "$ARTWORK_ROOT"/. artwork-source/
+          fi
+
+          chmod +x ./gradlew
+          rm -f "$ZIP_FILE"
+
+      - name: Commit imported project
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Import Christmas GSD weather plugin project"
+            git push
+          fi
