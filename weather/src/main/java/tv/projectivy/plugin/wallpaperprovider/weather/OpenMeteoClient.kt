@@ -141,7 +141,7 @@ object OpenMeteoClient {
                 sunset = daily.optJSONArray("sunset")?.optString(0).orEmpty(),
                 metric = metric,
                 hourly = parseHourly(hourly, nowIso, 6),
-                daily = parseDaily(daily, 5),
+                daily = parseDaily(daily, 6),
                 nowcast = parseNowcast(root.optJSONObject("minutely_15"), nowIso),
                 yesterdayHigh = null,   // filled separately; see fetchYesterdayHigh
                 utcOffsetSeconds = utcOffsetSeconds

@@ -85,7 +85,8 @@ class WallpaperProviderService : Service() {
                 "idle=${PreferencesManager.launcherIdle}, " +
                 "instance=${System.identityHashCode(this@WallpaperProviderService)}")
 
-            if (!PreferencesManager.showClock) return
+            // The Christmas GSD card has its own embedded 24-hour clock, so
+            // refresh once per minute even if the legacy clock toggle is off.
 
             // Don't poke the launcher while it's idle. Each self-update makes
             // Projectivy re-request and redraw, which its own idle detection
@@ -109,7 +110,7 @@ class WallpaperProviderService : Service() {
         // TEMPORARY diagnostic.
         Log.i("ClockDiag", "onCreate @ ${System.currentTimeMillis()}, " +
             "instance=${System.identityHashCode(this)}")
-        if (PreferencesManager.showClock) scheduleNextTick()
+        scheduleNextTick()
     }
 
     override fun onDestroy() {
@@ -270,9 +271,8 @@ class WallpaperProviderService : Service() {
 
         override fun setPreferences(params: String) {
             PreferencesManager.import(params)
-            // The clock may have just been switched on or off.
-            if (PreferencesManager.showClock) scheduleNextTick()
-            else clockHandler.removeCallbacks(clockTick)
+            // The Christmas GSD panel always carries its own live 24-hour clock.
+            scheduleNextTick()
         }
     }
 
@@ -357,8 +357,8 @@ class WallpaperProviderService : Service() {
      * key only moves when the weather or a setting does.
      */
     private fun renderCached(c: OpenMeteoClient.Conditions): java.io.File {
-        val minute = if (PreferencesManager.showClock)
-            System.currentTimeMillis() / 60_000L else 0L
+        // The Christmas GSD panel clock is always visible and refreshes each minute.
+        val minute = System.currentTimeMillis() / 60_000L
 
         // Without this, an unchanging scene (same weather, same settings)
         // would keep returning the identical cached file forever, and the

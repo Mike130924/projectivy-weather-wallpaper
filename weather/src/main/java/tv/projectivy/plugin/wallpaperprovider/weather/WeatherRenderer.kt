@@ -301,9 +301,9 @@ object WeatherRenderer {
         medium = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         scale = PreferencesManager.panelScaleFactor
 
-        // Scrim still needed: contributed art can be any brightness.
+        // The Christmas card has its own contained contrast surface. Preserve
+        // every pixel of the user's wallpaper outside the card.
         val overlayPhase = ThemeResolver.resolve(c)
-        drawScrim(canvas, strong = true)
 
         val (shiftX1, shiftY1) = burnInOffset()
         canvas.save()
@@ -343,10 +343,10 @@ object WeatherRenderer {
         val phase = ThemeResolver.resolve(c)
         if (background != null) {
             canvas.drawBitmap(background, 0f, 0f, null)
-            drawScrim(canvas, strong = true, extraDark = phase == ThemeResolver.Phase.DAY)
+            // The Christmas card provides its own contrast surface.
         } else {
             SceneBackgrounds.draw(canvas, W, H, c, phase)
-            drawScrim(canvas, strong = false)
+            // The Christmas card provides its own contrast surface.
         }
         val (shiftX2, shiftY2) = burnInOffset()
         canvas.save()
@@ -394,15 +394,10 @@ object WeatherRenderer {
             target = canvas
         }
 
-        var strongScrim = false
-        var extraDark = false
-
         if (resolved != null) {
             target.drawBitmap(resolved.first, 0f, 0f, null)
             resolved.first.recycle()
             attribution = resolved.second
-            strongScrim = true
-            extraDark = phase == ThemeResolver.Phase.DAY
         } else if (source == Backgrounds.SOURCE_GRADIENT) {
             val (top, bottom) = gradientFor(bucket, c.isDay)
             target.drawRect(0f, 0f, W.toFloat(), H.toFloat(), Paint().apply {
@@ -422,7 +417,7 @@ object WeatherRenderer {
             if (theme.flecks) drawFlecks(canvas, theme)
         }
 
-        drawScrim(canvas, strong = strongScrim, extraDark = extraDark)
+        // No full-frame scrim: keep the user's background artwork unchanged.
 
         val (shiftX3, shiftY3) = burnInOffset()
         canvas.save()
@@ -437,6 +432,12 @@ object WeatherRenderer {
     }
 
     /** Everything above the background: readings, icon, optional panels. */
+    /**
+     * Christmas GSD edition: a centred burgundy-and-gold glass weather card.
+     * Reference geometry is 4K X=1080, Y=160, W=1680, H=920, rendered here
+     * at half scale on the 1920x1080 canvas. Everything outside the card is
+     * transparent so the user's wallpaper remains completely untouched.
+     */
     private fun drawPanel(
         canvas: Canvas,
         c: OpenMeteoClient.Conditions,
@@ -446,232 +447,131 @@ object WeatherRenderer {
         phaseIsDay: Boolean = false,
         context: Context? = null
     ) {
-        // Subtle, slow drift to spread wear on burn-in-prone displays. Every
-        // fixed-position element the panel draws — temperature, clock,
-        // location label, the strip backgrounds — otherwise sits on the same
-        // pixels refresh after refresh, which is exactly the pattern OLED
-        // burn-in punishes. Real TVs solve this the same way: a small,
-        // continuous, content-independent shift.
-        //
-        // Two different periods (not a simple ratio) so the path sweeps a
-        // spread of positions rather than retracing a short loop. Amplitude is
-        // tiny relative to MARGIN, so nothing gets pushed toward the overscan
-        // edge, and the change between two consecutive refreshes is at most a
-        // few pixels — imperceptible on a still image, and sub-pixel between
-        // one-minute clock ticks so the clock itself never visibly jitters.
-        // Verified numerically before shipping this.
-        canvas.save()
-        if (PreferencesManager.reduceBurnIn) {
-            val t = System.currentTimeMillis() / 1000.0
-            val dx = (6.0 * kotlin.math.cos(2 * Math.PI * t / (3 * 3600))).toFloat()
-            val dy = (4.0 * kotlin.math.sin(2 * Math.PI * t / (4.5 * 3600))).toFloat()
-            canvas.translate(dx, dy)
+        val left = 540f
+        val top = 80f
+        val width = 840f
+        val height = 460f
+        val right = left + width
+        val bottom = top + height
+
+        val gold = Color.rgb(226, 190, 112)
+        val paleGold = Color.rgb(248, 226, 178)
+        val cream = Color.rgb(255, 244, 224)
+        val muted = Color.rgb(221, 202, 177)
+
+        // Contained glass panel; no full-screen scrim or colour grading.
+        val panel = RectF(left, top, right, bottom)
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                left, top, right, bottom,
+                Color.argb(226, 42, 10, 22),
+                Color.argb(214, 20, 16, 28),
+                Shader.TileMode.CLAMP
+            )
         }
+        canvas.drawRoundRect(panel, 28f, 28f, fill)
+        canvas.drawRoundRect(panel, 28f, 28f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+            color = gold
+            alpha = 235
+        })
+        canvas.drawRoundRect(
+            RectF(left + 10f, top + 10f, right - 10f, bottom - 10f),
+            22f, 22f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 1.5f
+                color = paleGold
+                alpha = 105
+            }
+        )
 
-        alert?.let { drawAlertBanner(canvas, it) }
+        // Header: location on the left, live 24-hour clock and date on the right.
+        val titlePaint = paint(30f, medium).apply { color = paleGold; alpha = 255 }
+        canvas.drawText(placeLabel.uppercase(), left + 38f, top + 52f, titlePaint)
+        val now = java.util.Calendar.getInstance()
+        val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(now.time)
+        val date = java.text.SimpleDateFormat("EEE d MMM", java.util.Locale.getDefault()).format(now.time)
+        val timePaint = paint(42f, medium).apply { color = cream; alpha = 255 }
+        val datePaint = paint(22f, light).apply { color = muted; alpha = 235 }
+        canvas.drawText(time, right - 38f - timePaint.measureText(time), top + 48f, timePaint)
+        canvas.drawText(date, right - 38f - datePaint.measureText(date), top + 68f, datePaint)
+        canvas.drawLine(left + 30f, top + 76f, right - 30f, top + 76f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 175; strokeWidth = 2f })
 
-        if (PreferencesManager.showClock && context != null) {
-            drawClock(canvas, context, alert != null)
-        }
-
-        var y = MARGIN + dy(60f) + (if (alert != null) 74f else 0f)
-
-        // Neon Galaxy V2 accent: keep the location label distinct from readings.
-        val labelPaint = paint(sz(38f), medium, 205)
-        labelPaint.color = Color.parseColor("#FFFF4FD8")
-        canvas.drawText(placeLabel.uppercase(), MARGIN, y, labelPaint)
-        y += dy(190f)
-
+        // Main conditions: temperature, icon and description on one clean row.
         val temp = "${c.temperature.roundToInt()}${c.unitSuffix}"
-        val tempPaint = paint(sz(220f), light).apply {
-            color = Color.parseColor("#FF00D9FF")
-        }
-        canvas.drawText(temp, MARGIN, y, tempPaint)
+        val tempPaint = paint(112f, light).apply { color = cream; alpha = 255 }
+        canvas.drawText(temp, left + 42f, top + 202f, tempPaint)
+        WeatherIcons.draw(canvas, c.weatherCode, phaseIsDay,
+            cx = left + 332f, cy = top + 163f, size = 86f)
+        val description = OpenMeteoClient.describe(context, c.weatherCode)
+        canvas.drawText(description, left + 405f, top + 164f,
+            paint(38f, medium).apply { color = paleGold; alpha = 255 })
 
-        WeatherIcons.draw(
-            canvas, c.weatherCode, phaseIsDay,
-            cx = MARGIN + tempPaint.measureText(temp) + dy(130f),
-            cy = y - dy(70f),
-            size = sz(175f)
+        // Four separate metric cells avoid the old long, colliding detail line.
+        val metricTop = top + 224f
+        val metricLeft = left + 30f
+        val metricWidth = (width - 60f) / 4f
+        val metricValues = listOf(
+            "FEELS LIKE" to "${c.apparentTemperature.roundToInt()}${c.unitSuffix}",
+            "HIGH" to "${c.high.roundToInt()}${c.unitSuffix}",
+            "LOW" to "${c.low.roundToInt()}${c.unitSuffix}",
+            "WIND" to "${c.windSpeed.roundToInt()} ${OpenMeteoClient.compass(c.windDirection)}"
         )
+        metricValues.forEachIndexed { index, pair ->
+            val x = metricLeft + index * metricWidth
+            if (index > 0) {
+                canvas.drawLine(x, metricTop + 4f, x, metricTop + 62f,
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 85; strokeWidth = 1.5f })
+            }
+            canvas.drawText(pair.first, x + 16f, metricTop + 22f,
+                paint(16f, medium).apply { color = muted; alpha = 235 })
+            canvas.drawText(pair.second, x + 16f, metricTop + 54f,
+                paint(27f, medium).apply { color = cream; alpha = 255 })
+        }
 
-        y += dy(90f)
-        canvas.drawText(
-            OpenMeteoClient.describe(context, c.weatherCode), MARGIN, y,
-            paint(sz(64f), light, 238).apply { color = Color.parseColor("#FFF3F8FF") }
-        )
-
-        // Whether it is about to rain matters more than anything else here, so
-        // it goes immediately under the conditions and takes an accent colour.
-        // Costs no space when there's nothing imminent.
-        if (PreferencesManager.showNowcast) {
-            c.nowcast?.let { n ->
-                OpenMeteoClient.nowcastLabel(n, c.weatherCode)?.let { text ->
-                    y += dy(52f)
-                    canvas.drawText(text, MARGIN, y, paint(sz(40f), medium).apply {
-                        color = Color.parseColor("#FF00D9FF")
-                    })
-                }
+        // Six future days plus today's high/low above: seven calendar days total.
+        // Divide the strip by the actual entry count so no empty forecast column
+        // is left at the end when Open-Meteo returns six future days.
+        val forecastTop = top + 310f
+        canvas.drawLine(left + 30f, forecastTop, right - 30f, forecastTop,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 130; strokeWidth = 1.5f })
+        val entries = c.daily.take(6)
+        val innerLeft = left + 26f
+        val colWidth = (width - 52f) / entries.size.coerceAtLeast(1)
+        entries.forEachIndexed { index, day ->
+            val cx = innerLeft + colWidth * index + colWidth / 2f
+            val dayPaint = paint(19f, medium).apply { color = paleGold; alpha = 245 }
+            val highPaint = paint(20f, medium).apply { color = cream; alpha = 255 }
+            val lowPaint = paint(18f, light).apply { color = muted; alpha = 235 }
+            canvas.drawText(day.label, cx - dayPaint.measureText(day.label) / 2f,
+                forecastTop + 30f, dayPaint)
+            WeatherIcons.draw(canvas, day.weatherCode, true, cx, forecastTop + 66f, 34f)
+            val high = "${day.high.roundToInt()}°"
+            val low = "${day.low.roundToInt()}°"
+            canvas.drawText(high, cx - 17f - highPaint.measureText(high) / 2f,
+                forecastTop + 112f, highPaint)
+            canvas.drawText(low, cx + 18f - lowPaint.measureText(low) / 2f,
+                forecastTop + 112f, lowPaint)
+            if (index > 0) {
+                val x = innerLeft + colWidth * index
+                canvas.drawLine(x, forecastTop + 12f, x, bottom - 20f,
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 55; strokeWidth = 1f })
             }
         }
 
-        // One advisory, the most important. Grouped with the nowcast because
-        // both answer "is there anything I should do about today".
-        if (PreferencesManager.showAdvisories) {
-            Advisories.top(context, c)?.let { advisory ->
-                y += dy(50f)
-                canvas.drawText(advisory.text, MARGIN, y, paint(sz(36f), medium).apply {
-                    color = advisory.colour
-                })
+        alert?.let {
+            val warning = it.event.uppercase()
+            val warningPaint = paint(17f, medium).apply {
+                color = Color.rgb(255, 205, 120)
+                alpha = 255
             }
+            canvas.drawText(warning, left + 42f, bottom - 18f, warningPaint)
         }
-
-        // Poor air quality earns the same prominence as imminent rain. A
-        // routine "Good 53" does not, and goes in the stats line instead.
-        if (PreferencesManager.showAirQuality) {
-            currentAir?.let { air ->
-                AirQualityClient.alertLabel(context, air)?.let { text ->
-                    y += dy(52f)
-                    canvas.drawText(text, MARGIN, y, paint(sz(38f), medium).apply {
-                        color = AirQualityClient.bandColour(air.aqi)
-                    })
-                }
-            }
-        }
-
-        y += dy(78f)
-
-        // Primary detail line, always shown.
-        val wind = buildString {
-            append("Wind ${c.windSpeed.roundToInt()}")
-            val dir = OpenMeteoClient.compass(c.windDirection)
-            if (dir.isNotEmpty()) append(" $dir")
-        }
-        val yesterday = if (PreferencesManager.showYesterday) yesterdayPhrase(c) else null
-        val detail = buildString {
-            append("Feels like ${c.apparentTemperature.roundToInt()}\u00B0   \u00B7   ")
-            append("H ${c.high.roundToInt()}\u00B0  L ${c.low.roundToInt()}\u00B0   \u00B7   ")
-            append(wind)
-            // Appended rather than given its own line: it's context, and the
-            // panel has limited vertical room.
-            yesterday?.let { append("   \u00B7   $it") }
-        }
-        canvas.drawText(detail, MARGIN, y,
-            paint(sz(40f), light, 215).apply { color = Color.parseColor("#FF8FAEFF") })
-        y += dy(52f)
-
-        // Aurora, when the K-index makes it plausible here. Conditional, so it
-        // costs nothing on the overwhelming majority of nights.
-        if (PreferencesManager.showAurora) {
-            currentAurora?.let { a ->
-                AuroraClient.label(context, a)?.let { text ->
-                    y += dy(46f)
-                    canvas.drawText(text, MARGIN, y, paint(sz(34f), medium, 220).apply {
-                        color = Color.parseColor("#A8E6A0")
-                    })
-                }
-            }
-        }
-
-        // Wave height and period. Only ever non-null where there's actually
-        // large open water nearby, so this costs nothing everywhere else.
-        if (PreferencesManager.showMarine) {
-            currentMarine?.let { m ->
-                y += dy(46f)
-                canvas.drawText(
-                    MarineClient.label(context, m, c.metric), MARGIN, y,
-                    paint(sz(34f), medium, 220).apply {
-                        color = Color.parseColor("#8ECAE6")
-                    }
-                )
-            }
-        }
-
-        if (PreferencesManager.showStats) {
-            statsLine(context, c)?.let {
-                canvas.drawText(it, MARGIN, y, paint(sz(34f), light, 165))
-                y += dy(46f)
-            }
-        }
-
-        if (PreferencesManager.showSun) {
-            sunLine(c)?.let {
-                canvas.drawText(it, MARGIN, y, paint(sz(34f), light, 165))
-                y += dy(46f)
-            }
-        }
-
-        // Hourly and daily sit side by side on one row so both can be enabled
-        // without running into the app row.
-        val showHourly = PreferencesManager.showHourly && c.hourly.isNotEmpty()
-        val showDaily = PreferencesManager.showDaily && c.daily.isNotEmpty()
-
-        if (showHourly || showDaily) {
-            // Clamp upward to stay clear of the app row rather than dropping the
-            // strips entirely. The earlier version discarded them silently once
-            // the stats and sun lines had pushed y far enough down, which looked
-            // exactly like the toggles not working.
-            val desired = y + dy(22f)
-            val highest = safeBottom() - stripHeight()
-            val stripTop = minOf(desired, highest)
-
-            // Only bail if there is genuinely no room left below the text.
-            if (stripTop >= y - 6f) {
-                var x = MARGIN
-                if (showHourly) {
-                    x = hourlyStrip(canvas, c, x, stripTop)
-                    x += dy(70f)
-                }
-                if (showDaily) {
-                    dailyStrip(canvas, c, x, stripTop)
-                }
-            }
-        }
-
-        // Update notice, kept to the same small print as the credits. A
-        // wallpaper is a poor place to shout, and it self-clears once updated.
-        UpdateChecker.pendingVersion(BuildConfig.VERSION_NAME)?.let { version ->
-            val notice = "Update available \u00B7 v$version"
-            val p = paint(sz(26f), medium, 150)
-            canvas.drawText(notice, MARGIN, H - MARGIN * 0.45f - dy(34f), p)
-        }
-
-        attribution?.let {
-            canvas.drawText(it, MARGIN, H - 46f, paint(26f, light, 130))
-        }
-
-        // "Updated H:MM" at the mirrored bottom-right corner, in the
-        // location's own local time — not the device's, matching the fix
-        // already applied to day/night phase, advisories, and the yesterday
-        // comparison. Whatever caused a refresh to be skipped, this makes
-        // the staleness visible on the wallpaper itself instead of only ever
-        // showing up as a wrong-looking clock.
-        if (PreferencesManager.showLastUpdated) {
-            val now = OpenMeteoClient.locationNow(c.utcOffsetSeconds)
-            val is24 = context?.let { use24Hour(it) } ?: false
-            val hour = if (is24) now.get(java.util.Calendar.HOUR_OF_DAY)
-            else now.get(java.util.Calendar.HOUR).let { if (it == 0) 12 else it }
-            val minute = now.get(java.util.Calendar.MINUTE)
-            val suffix = if (is24) "" else
-                if (now.get(java.util.Calendar.AM_PM) == java.util.Calendar.AM) " AM" else " PM"
-            val label = "Updated %d:%02d%s".format(hour, minute, suffix)
-            val p2 = paint(26f, light, 130)
-            canvas.drawText(label, W - MARGIN - p2.measureText(label), H - 46f, p2)
-        }
-
-        canvas.restore()
     }
 
-    /**
-     * Clock, in the position, size and style the user picked.
-     *
-     * Only accurate because the service asks for a refresh every minute while
-     * this is enabled; a wallpaper redrawn every fifteen minutes would show a
-     * time wrong by up to a quarter of an hour, which is worse than no clock.
-     *
-     * There is deliberately no seconds option: that would mean re-rendering a
-     * 1080p bitmap sixty times a minute.
-     */
     private fun drawClock(canvas: Canvas, context: Context, alert: Boolean) {
         val cal = java.util.Calendar.getInstance()
         val base = sz(PreferencesManager.clockBaseSize)

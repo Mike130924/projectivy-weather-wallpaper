@@ -1,21 +1,17 @@
 # Christmas GSD Weather Plugin — build status
 
-## Source integration completed
+## Christmas overlay redesign — source 2.8.4
 
-- Started from the supplied `projectivy-weather-wallpaper` source archive.
-- Preserved the existing Projectivy wallpaper-provider service and Open-Meteo weather client.
-- Added the supplied Christmas GSD artwork as a bundled, offline static wallpaper pack.
-- Made the Christmas GSD pack the default background for fresh installs.
-- Kept the existing renderer's live weather overlay over static pack backgrounds.
-- Changed the daily forecast request and renderer to display up to seven days.
-- Enabled the daily forecast by default.
-- Enabled the digital clock by default and set its default format to 24-hour.
-- Updated the app display name and version to Christmas GSD Weather 2.8.2.
+- Replaced the legacy top-left neon weather overlay with the centred Christmas weather card.
+- Reference geometry: 4K X=1080, Y=160, W=1680, H=920, rendered at half scale on the 1920x1080 canvas.
+- Styling: contained deep-burgundy glass panel, gold trim and warm cream typography.
+- Current conditions and feels-like/high/low/wind are laid out in separate cells.
+- Seven daily forecast columns are supported and populated with six days after today (today's high/low are in the main metrics).
+- The forecast request remains seven calendar days including today; the parser now correctly supplies all six following days.
+- The card is transparent outside its bounds; no full-frame scrim or colour grading is applied to the Christmas wallpaper.
+- The card clock uses 24-hour HH:mm and includes the date.
+- All existing SettingsFragment categories and setting actions are retained; this redesign changes the rendered weather card, not the settings navigation.
 
-## Verification limitation
+## Verification status
 
-A full Android APK build has **not** been completed in this environment. The Gradle wrapper attempted to download Gradle 9.4.1 from `services.gradle.org`, but this environment has no outbound DNS/network access (`UnknownHostException`). No Android SDK is installed in the local build environment either.
-
-The Kotlin source was inspected and passed a syntax-focused compiler scan with no parser/syntax diagnostics, but Android/Gradle type-checking and packaging remain unverified.
-
-This checkpoint therefore contains the complete modified source project and artwork, **not a verified installable APK**. Do not treat it as the final installable release until `:weather:assembleDebug` or the release task succeeds in an Android SDK-enabled build environment.
+This is a source package, not a verified APK. Run the GitHub Actions Build APK workflow to perform the Android/Gradle build. Install the resulting APK and check the card and settings on the target TV before calling the redesign accepted.
