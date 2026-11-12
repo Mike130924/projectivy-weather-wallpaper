@@ -96,7 +96,7 @@ object OpenMeteoClient {
                 "&daily=temperature_2m_max,temperature_2m_min,weather_code," +
                 "sunrise,sunset,uv_index_max" +
                 "&temperature_unit=$tempUnit&wind_speed_unit=$windUnit" +
-                "&forecast_days=7&timezone=auto"
+                "&forecast_days=16&timezone=auto"
 
         var conn: HttpURLConnection? = null
         return try {
@@ -141,7 +141,7 @@ object OpenMeteoClient {
                 sunset = daily.optJSONArray("sunset")?.optString(0).orEmpty(),
                 metric = metric,
                 hourly = parseHourly(hourly, nowIso, 6),
-                daily = parseDaily(daily, 6),
+                daily = parseDaily(daily, 7),
                 nowcast = parseNowcast(root.optJSONObject("minutely_15"), nowIso),
                 yesterdayHigh = null,   // filled separately; see fetchYesterdayHigh
                 utcOffsetSeconds = utcOffsetSeconds
@@ -195,28 +195,56 @@ object OpenMeteoClient {
         }
     }
 
-    private fun parseDaily(daily: JSONObject, count: Int): List<DayEntry> = try {
+    private fun parseDaily(daily: JSONObject, count: Int): List<DayEntry> {
+        return try {
         val times = daily.getJSONArray("time")
         val max = daily.getJSONArray("temperature_2m_max")
         val min = daily.getJSONArray("temperature_2m_min")
         val codes = daily.optJSONArray("weather_code")
 
-        val out = mutableListOf<DayEntry>()
-        // Start at 1: index 0 is today, already shown as H/L in the detail line.
-        for (i in 1 until minOf(1 + count, times.length())) {
-            out.add(
-                DayEntry(
-                    label = dayOfWeek(times.getString(i)),
-                    high = max.getDouble(i),
-                    low = min.getDouble(i),
-                    weatherCode = codes?.optInt(i, 0) ?: 0
-                )
-            )
+        // Always render a complete Monday-to-Sunday week. Include today when
+        // today is Monday; otherwise use the next Monday. timezone=auto makes
+        // the API's date array local to the selected weather location.
+        var firstMonday = -1
+        for (i in 0 until times.length()) {
+            val iso = times.getString(i)
+            val year = iso.substring(0, 4).toInt()
+            val month = iso.substring(5, 7).toInt()
+            val day = iso.substring(8, 10).toInt()
+            val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                set(java.util.Calendar.YEAR, year)
+                set(java.util.Calendar.MONTH, month - 1)
+                set(java.util.Calendar.DAY_OF_MONTH, day)
+                set(java.util.Calendar.HOUR_OF_DAY, 12)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            if (cal.get(java.util.Calendar.DAY_OF_WEEK) == java.util.Calendar.MONDAY) {
+                firstMonday = i
+                break
+            }
         }
-        out
+        if (firstMonday < 0 || firstMonday + 7 > times.length()) {
+            emptyList()
+        } else {
+            val out = mutableListOf<DayEntry>()
+            for (i in firstMonday until firstMonday + 7) {
+                out.add(
+                    DayEntry(
+                        label = dayOfWeek(times.getString(i)),
+                        high = max.getDouble(i),
+                        low = min.getDouble(i),
+                        weatherCode = codes?.optInt(i, 0) ?: 0
+                    )
+                )
+            }
+            out
+        }
     } catch (e: Exception) {
         Log.w(TAG, "Daily parse failed: ${e.message}")
         emptyList()
+    }
     }
 
     /**

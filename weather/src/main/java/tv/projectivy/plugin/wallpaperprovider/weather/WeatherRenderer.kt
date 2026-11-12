@@ -447,14 +447,6 @@ object WeatherRenderer {
         phaseIsDay: Boolean = false,
         context: Context? = null
     ) {
-        // Approved compact Christmas GSD card, fitted inside the central window.
-        // Transform the entire composition so the glass surface, border, typography,
-        // icons, forecast and spacing all share the same compact layout bounds.
-        canvas.save()
-        canvas.translate(875f, 12.5f)
-        canvas.scale(0.5506f, 0.4402f)
-        canvas.translate(-540f, -80f)
-
         val left = 540f
         val top = 80f
         val width = 840f
@@ -462,43 +454,27 @@ object WeatherRenderer {
         val right = left + width
         val bottom = top + height
 
-        // Christmas Red Glow palette: deep midnight glass, vivid red edge,
-        // crisp white readings and soft silver secondary labels.
-        val gold = Color.rgb(255, 48, 62)
-        val paleGold = Color.rgb(255, 226, 229)
-        val cream = Color.rgb(255, 255, 255)
-        val muted = Color.rgb(218, 224, 235)
+        val gold = Color.rgb(226, 190, 112)
+        val paleGold = Color.rgb(248, 226, 178)
+        val cream = Color.rgb(255, 244, 224)
+        val muted = Color.rgb(221, 202, 177)
 
         // Contained glass panel; no full-screen scrim or colour grading.
         val panel = RectF(left, top, right, bottom)
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 left, top, right, bottom,
-                Color.argb(238, 10, 14, 25),
-                Color.argb(232, 18, 12, 22),
+                Color.argb(226, 42, 10, 22),
+                Color.argb(214, 20, 16, 28),
                 Shader.TileMode.CLAMP
             )
         }
         canvas.drawRoundRect(panel, 28f, 28f, fill)
-        // Soft red halo and bright edge; all strokes follow the existing bounds.
-        canvas.drawRoundRect(panel, 28f, 28f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 14f
-            color = gold
-            alpha = 55
-        })
-        canvas.drawRoundRect(panel, 28f, 28f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 7f
-            color = gold
-            alpha = 105
-        })
         canvas.drawRoundRect(panel, 28f, 28f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 3f
             color = gold
-            alpha = 255
-            setShadowLayer(18f, 0f, 0f, Color.argb(210, 255, 32, 48))
+            alpha = 235
         })
         canvas.drawRoundRect(
             RectF(left + 10f, top + 10f, right - 10f, bottom - 10f),
@@ -522,7 +498,7 @@ object WeatherRenderer {
         canvas.drawText(time, right - 38f - timePaint.measureText(time), top + 48f, timePaint)
         canvas.drawText(date, right - 38f - datePaint.measureText(date), top + 68f, datePaint)
         canvas.drawLine(left + 30f, top + 76f, right - 30f, top + 76f,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 210; strokeWidth = 2.5f })
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 175; strokeWidth = 2f })
 
         // Main conditions: temperature, icon and description on one clean row.
         val temp = "${c.temperature.roundToInt()}${c.unitSuffix}"
@@ -556,33 +532,28 @@ object WeatherRenderer {
                 paint(27f, medium).apply { color = cream; alpha = 255 })
         }
 
-        // Six future days plus today's high/low above: seven calendar days total.
-        // Divide the strip by the actual entry count so no empty forecast column
-        // is left at the end when Open-Meteo returns six future days.
+        // Seven equally sized forecast columns, in Monday-to-Sunday order.
+        // The API supplies the next complete Monday-Sunday week (not today + six).
         val forecastTop = top + 310f
         canvas.drawLine(left + 30f, forecastTop, right - 30f, forecastTop,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 130; strokeWidth = 1.5f })
-        val entries = c.daily.take(6)
-        val innerLeft = left + 26f
-        val colWidth = (width - 52f) / entries.size.coerceAtLeast(1)
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 205; strokeWidth = 2f })
+        val entries = c.daily.take(7)
+        val innerLeft = left + 22f
+        val colWidth = (width - 44f) / 7f
         entries.forEachIndexed { index, day ->
             val cx = innerLeft + colWidth * index + colWidth / 2f
-            val dayPaint = paint(36f, medium).apply { color = paleGold; alpha = 255 }
-            val highPaint = paint(40f, medium).apply { color = cream; alpha = 255 }
-            val lowPaint = paint(32f, medium).apply { color = muted; alpha = 245 }
+            val dayPaint = paint(25f, medium).apply { color = paleGold; alpha = 255 }
+            val highPaint = paint(31f, medium).apply { color = cream; alpha = 255 }
             canvas.drawText(day.label, cx - dayPaint.measureText(day.label) / 2f,
-                forecastTop + 30f, dayPaint)
-            WeatherIcons.draw(canvas, day.weatherCode, true, cx, forecastTop + 66f, 34f)
-            val high = "${day.high.roundToInt()}°"
-            val low = "${day.low.roundToInt()}°"
-            canvas.drawText(high, cx - 17f - highPaint.measureText(high) / 2f,
-                forecastTop + 112f, highPaint)
-            canvas.drawText(low, cx + 18f - lowPaint.measureText(low) / 2f,
-                forecastTop + 112f, lowPaint)
+                forecastTop + 38f, dayPaint)
+            WeatherIcons.draw(canvas, day.weatherCode, true, cx, forecastTop + 83f, 43f)
+            val high = "${day.high.roundToInt()}${c.unitSuffix}"
+            canvas.drawText(high, cx - highPaint.measureText(high) / 2f,
+                forecastTop + 139f, highPaint)
             if (index > 0) {
                 val x = innerLeft + colWidth * index
                 canvas.drawLine(x, forecastTop + 12f, x, bottom - 20f,
-                    Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 55; strokeWidth = 1f })
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply { color = gold; alpha = 115; strokeWidth = 1.4f })
             }
         }
 
@@ -594,7 +565,6 @@ object WeatherRenderer {
             }
             canvas.drawText(warning, left + 42f, bottom - 18f, warningPaint)
         }
-        canvas.restore()
     }
 
     private fun drawClock(canvas: Canvas, context: Context, alert: Boolean) {
