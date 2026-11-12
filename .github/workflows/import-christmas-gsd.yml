@@ -20,7 +20,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Find the archive regardless of spaces or URL-encoded characters in its name.
           mapfile -t ZIP_FILES < <(find . -maxdepth 1 -type f -iname '*.zip' -print)
           if [ "${#ZIP_FILES[@]}" -eq 0 ]; then
             echo "::error::No ZIP archive was found in the repository root."
@@ -45,7 +44,10 @@ jobs:
           fi
 
           echo "Importing project from: $PROJECT_ROOT"
-          cp -a "$PROJECT_ROOT"/. .
+
+          # Import project files but deliberately preserve this repository's .github folder.
+          # This avoids changing workflow files, which require a separate GitHub permission.
+          find "$PROJECT_ROOT" -mindepth 1 -maxdepth 1 ! -name '.github' -exec cp -a {} . \;
 
           ARTWORK_ROOT="$(find "$RUNNER_TEMP/christmas-gsd-import" -type d -name artwork-source -print -quit)"
           if [ -n "$ARTWORK_ROOT" ]; then
