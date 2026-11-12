@@ -19,26 +19,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_FILE="Christmas GSD Weather Plugin.zip"
 
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "::error::Upload '$ZIP_FILE' to the repository root first."
+          # Find the archive regardless of spaces or URL-encoded characters in its name.
+          mapfile -t ZIP_FILES < <(find . -maxdepth 1 -type f -iname '*.zip' -print)
+          if [ "${#ZIP_FILES[@]}" -eq 0 ]; then
+            echo "::error::No ZIP archive was found in the repository root."
+            find . -maxdepth 1 -type f -printf '%f\n'
+            exit 1
+          fi
+          if [ "${#ZIP_FILES[@]}" -gt 1 ]; then
+            echo "::error::More than one ZIP archive was found in the repository root:"
+            printf '%s\n' "${ZIP_FILES[@]}"
             exit 1
           fi
 
+          ZIP_FILE="${ZIP_FILES[0]}"
+          echo "Using archive: $ZIP_FILE"
           mkdir -p "$RUNNER_TEMP/christmas-gsd-import"
           unzip -q "$ZIP_FILE" -d "$RUNNER_TEMP/christmas-gsd-import"
 
           PROJECT_ROOT="$(find "$RUNNER_TEMP/christmas-gsd-import" -type f -name gradlew -print -quit | xargs -r dirname)"
-          if [ -z "$PROJECT_ROOT" ] || [ ! -f "$PROJECT_ROOT/settings.gradle" -a ! -f "$PROJECT_ROOT/settings.gradle.kts" ]; then
-            echo "::error::Could not locate the Android/Gradle project inside the ZIP."
+          if [ -z "$PROJECT_ROOT" ] || { [ ! -f "$PROJECT_ROOT/settings.gradle" ] && [ ! -f "$PROJECT_ROOT/settings.gradle.kts" ]; }; then
+            echo "::error::Could not locate the Gradle project inside the ZIP."
             exit 1
           fi
 
           echo "Importing project from: $PROJECT_ROOT"
           cp -a "$PROJECT_ROOT"/. .
 
-          # Keep the original uploaded artwork source alongside the project, if present.
           ARTWORK_ROOT="$(find "$RUNNER_TEMP/christmas-gsd-import" -type d -name artwork-source -print -quit)"
           if [ -n "$ARTWORK_ROOT" ]; then
             mkdir -p artwork-source
@@ -47,6 +55,7 @@ jobs:
 
           chmod +x ./gradlew
           rm -f "$ZIP_FILE"
+          rm -f import-christmas-gsd.yml
 
       - name: Commit imported project
         shell: bash
