@@ -447,6 +447,10 @@ object WeatherRenderer {
         phaseIsDay: Boolean = false,
         context: Context? = null
     ) {
+        // Scale the complete Christmas card to 85%, keeping its top edge and
+        // horizontal centre fixed to match the original wallpaper footprint.
+        canvas.save()
+        canvas.scale(0.85f, 0.85f, 960f, 80f)
         val left = 540f
         val top = 80f
         val width = 840f
@@ -595,6 +599,7 @@ object WeatherRenderer {
             }
             canvas.drawText(warning, left + 42f, bottom - 18f, warningPaint)
         }
+        canvas.restore()
     }
 
     private fun drawClock(canvas: Canvas, context: Context, alert: Boolean) {
